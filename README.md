@@ -2,6 +2,9 @@
 
 This MCP server provides tools to query and analyze data from a Uyuni report database, offering insights into patch management and system compliance.
 
+## Disclaimer
+This is an open-source project provided "AS IS" without any warranty, express or implied. Use at your own risk. For full details, please refer to the License section.
+
 ## Setup
 
 Before running the server, you must configure the database connection using environment variables.
