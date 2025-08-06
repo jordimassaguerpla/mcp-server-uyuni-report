@@ -1,0 +1,16 @@
+[project]
+name = "mcp-server-uyuni-report"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=1.12.3",
+    "asyncpg",
+    "matplotlib",
+]
+
+[project.scripts]
+mcp-server-uyuni-report = "mcp_server_uyuni_report:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
