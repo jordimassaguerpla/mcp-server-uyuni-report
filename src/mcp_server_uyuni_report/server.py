@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import os
+import logging
+import sys
 import base64
 import io
 import matplotlib
@@ -38,8 +40,8 @@ async def add(a: int, b: int, ctx: Context) -> int:
 class ErrataStatsResponse(BaseModel):
     """Statistics about errata."""
 
-    mean_resolution_time: str
-    mean_resolution_time_stddev: str
+    mean_patch_time: str
+    mean_patch_time_stddev: str
     patched_systems_count: int
     created_errata_count: int
     total_affected_systems_count: int
@@ -55,13 +57,13 @@ class TimeseriesDataPoint(BaseModel):
     time_bucket: date
 
     # Real values for labeling
-    mean_resolution_time: str | None
+    mean_patch_time: str | None
     patched_systems_count: int
     created_errata_count: int
     total_affected_systems_count: int
 
     # Normalized values for plotting
-    normalized_mean_resolution_time: float | None
+    normalized_mean_patch_time: float | None
     normalized_patched_systems_count: float
     normalized_created_errata_count: float
     normalized_total_affected_systems_count: float
@@ -96,7 +98,7 @@ async def get_errata_stats(
     Otherwise, it returns aggregate statistics for the entire period.
 
     Example Visualization Prompt:
-    "Show me a weekly trend of security errata from the beginning of the year until now. Plot the mean resolution time, patched systems, and created errata on a graph."
+    "Show me a weekly trend of security errata from the beginning of the year until now. Plot the mean patch time, patched systems, and created errata on a graph."
 
     The tool can be filtered by various optional parameters.
     The database connection parameters must be provided via environment variables:
@@ -141,40 +143,40 @@ async def get_errata_stats(
         if not stats_data:
             return TimeseriesResponse(data=[], max_values={})
 
-        max_resolution_time = max((item["mean_time_to_resolution"].total_seconds() for item in stats_data if item["mean_time_to_resolution"]), default=1.0)
+        max_patch_time = max((item["mean_time_to_patch"].total_seconds() for item in stats_data if item["mean_time_to_patch"]), default=1.0)
         max_patched_systems = max((item["patched_systems_count"] for item in stats_data), default=1.0)
         max_created_errata = max((item["created_errata_count"] for item in stats_data), default=1.0)
         max_total_affected = max((item["total_affected_systems_count"] for item in stats_data), default=1.0)
 
         normalized_data = []
         for item in stats_data:
-            normalized_time = item["mean_time_to_resolution"].total_seconds() / max_resolution_time if item["mean_time_to_resolution"] else None
-            mean_time_str = str(item["mean_time_to_resolution"]) if item["mean_time_to_resolution"] else None
+            normalized_time = item["mean_time_to_patch"].total_seconds() / max_patch_time if item["mean_time_to_patch"] else None
+            mean_time_str = str(item["mean_time_to_patch"]) if item["mean_time_to_patch"] else None
 
             normalized_point = TimeseriesDataPoint(
                 time_bucket=item["time_bucket"],
 
                 # Real values
-                mean_resolution_time=mean_time_str,
+                mean_patch_time=mean_time_str,
                 patched_systems_count=item["patched_systems_count"],
                 created_errata_count=item["created_errata_count"],
                 total_affected_systems_count=item["total_affected_systems_count"],
 
                 # Normalized values
-                normalized_mean_resolution_time=normalized_time,
+                normalized_mean_patch_time=normalized_time,
                 normalized_patched_systems_count=item["patched_systems_count"] / max_patched_systems,
                 normalized_created_errata_count=item["created_errata_count"] / max_created_errata,
                 normalized_total_affected_systems_count=item["total_affected_systems_count"] / max_total_affected,
             )
             normalized_data.append(normalized_point)
 
-        return TimeseriesResponse(data=normalized_data, max_values={"mean_resolution_time_seconds": max_resolution_time, "patched_systems_count": float(max_patched_systems), "created_errata_count": float(max_created_errata), "total_affected_systems_count": float(max_total_affected)})
+        return TimeseriesResponse(data=normalized_data, max_values={"mean_patch_time_seconds": max_patch_time, "patched_systems_count": float(max_patched_systems), "created_errata_count": float(max_created_errata), "total_affected_systems_count": float(max_total_affected)})
     else:
         # Aggregate stats case
-        mean_time_str = str(stats_data["mean_time_to_resolution"]) if stats_data["mean_time_to_resolution"] else "Not enough data to calculate for the given filters."
-        stddev_str = str(stats_data["mean_time_to_resolution_stddev"]) if stats_data["mean_time_to_resolution_stddev"] else "Not applicable (less than 2 data points)."
+        mean_time_str = str(stats_data["mean_time_to_patch"]) if stats_data["mean_time_to_patch"] else "Not enough data to calculate for the given filters."
+        stddev_str = str(stats_data["mean_time_to_patch_stddev"]) if stats_data["mean_time_to_patch_stddev"] else "Not applicable (less than 2 data points)."
 
-        return ErrataStatsResponse(mean_resolution_time=mean_time_str, mean_resolution_time_stddev=stddev_str, patched_systems_count=stats_data["patched_systems_count"], created_errata_count=stats_data["created_errata_count"], total_affected_systems_count=stats_data["total_affected_systems_count"], severity_breakdown=stats_data["severity_breakdown"])
+        return ErrataStatsResponse(mean_patch_time=mean_time_str, mean_patch_time_stddev=stddev_str, patched_systems_count=stats_data["patched_systems_count"], created_errata_count=stats_data["created_errata_count"], total_affected_systems_count=stats_data["total_affected_systems_count"], severity_breakdown=stats_data["severity_breakdown"])
 
 @mcp.tool()
 async def get_filter_values(
@@ -219,7 +221,7 @@ async def plot_errata_stats_timeseries(
 
     This tool fetches time-series data based on the provided filters and
     generates a PNG image of a line graph. The graph displays the normalized
-    trends for mean resolution time, patched systems, created errata, and
+    trends for mean patch time, patched systems, created errata, and
     total affected systems.
 
     If 'output_filename' is provided, the plot is saved to that file in the './plots' directory
@@ -254,7 +256,7 @@ async def plot_errata_stats_timeseries(
                 transform=ax.transAxes)
     else:
         time_buckets = [item['time_bucket'] for item in stats_data]
-        res_times_sec = [(item['mean_time_to_resolution'].total_seconds() if item['mean_time_to_resolution'] else 0) for item in stats_data]
+        res_times_sec = [(item['mean_time_to_patch'].total_seconds() if item['mean_time_to_patch'] else 0) for item in stats_data]
         patched_systems = [item['patched_systems_count'] for item in stats_data]
         created_errata = [item['created_errata_count'] for item in stats_data]
         total_affected = [item['total_affected_systems_count'] for item in stats_data]
@@ -264,7 +266,7 @@ async def plot_errata_stats_timeseries(
         max_created = max(created_errata) or 1.0
         max_total = max(total_affected) or 1.0
 
-        ax.plot(time_buckets, [s / max_res_time for s in res_times_sec], label=f'Mean Resolution Time (max: {timedelta(seconds=max_res_time)})', marker='o', linestyle='-')
+        ax.plot(time_buckets, [s / max_res_time for s in res_times_sec], label=f'Mean Patch Time (max: {timedelta(seconds=max_res_time)})', marker='o', linestyle='-')
         ax.plot(time_buckets, [s / max_patched for s in patched_systems], label=f'Patched Systems (max: {int(max_patched)})', marker='s', linestyle='-')
         ax.plot(time_buckets, [s / max_created for s in created_errata], label=f'Created Errata (max: {int(max_created)})', marker='^', linestyle='-')
         ax.plot(time_buckets, [s / max_total for s in total_affected], label=f'Total Affected Systems (max: {int(max_total)})', marker='x', linestyle='--')
@@ -301,5 +303,24 @@ async def plot_errata_stats_timeseries(
         return base64.b64encode(png_bytes).decode('utf-8')
 
 def main_cli():
-    print("Starting mcp-server-uyuni-report...")
+    log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+    log_file = os.environ.get("LOG_FILE")
+
+    handlers = [logging.StreamHandler()]  # Defaults to stderr
+    if log_file:
+        try:
+            # Use 'a' for append mode, so logs are not overwritten on restart
+            file_handler = logging.FileHandler(log_file, mode='a')
+            handlers.append(file_handler)
+        except (IOError, OSError) as e:
+            # If file logging fails, print an error to stderr and continue with console logging.
+            print(f"ERROR: Could not open log file '{log_file}' for writing: {e}", file=sys.stderr)
+            handlers = [logging.StreamHandler()]
+
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
+    )
+    logging.info("Starting mcp-server-uyuni-report...")
     mcp.run(transport="stdio")

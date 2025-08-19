@@ -17,6 +17,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from datetime import date, timedelta
 from typing import TypedDict, Union
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DBSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DB_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -196,6 +199,7 @@ async def get_errata_stats(
                 WHERE ts.time_bucket >= $2 AND ts.time_bucket <= $3
                 ORDER BY ts.time_bucket;
             """
+            logger.debug("Executing time series query: %s \nPARAMS: %s", query, ts_params)
             rows = await conn.fetch(query, *ts_params)
             return [TimeseriesErrataStats(**row) for row in rows]
 
@@ -220,6 +224,7 @@ async def get_errata_stats(
             _append_filters(resolution_conditions, resolution_params, start_date, end_date, advisory_type, advisory_name, cve, severity, hostname, os_family, organization, system_group_name)
             resolution_query_parts.append(f"WHERE {' AND '.join(resolution_conditions)}")
             resolution_query = " ".join(resolution_query_parts) + ";"
+            logger.debug("Executing resolution query: %s \nPARAMS: %s", resolution_query, resolution_params)
             resolution_row = await conn.fetchrow(resolution_query, *resolution_params)
 
             stats_query_base_parts = ["FROM Errata e"]
@@ -236,6 +241,7 @@ async def get_errata_stats(
             stats_base_query = f"{' '.join(stats_query_base_parts)} {stats_where_clause}"
 
             severity_query = f"SELECT e.severity, count(DISTINCT e.errata_id) as count {stats_base_query} GROUP BY e.severity;"
+            logger.debug("Executing severity query: %s \nPARAMS: %s", severity_query, stats_params)
             severity_rows = await conn.fetch(severity_query, *stats_params)
             severity_breakdown = {row['severity']: row['count'] for row in severity_rows if row['severity']}
             created_errata_count = sum(severity_breakdown.values())
@@ -244,6 +250,7 @@ async def get_errata_stats(
             if system_filters_present:
                 total_systems_query_parts.extend(stats_query_base_parts[2:])
             total_systems_query = f"{' '.join(total_systems_query_parts)} {stats_where_clause};"
+            logger.debug("Executing total systems query: %s \nPARAMS: %s", total_systems_query, stats_params)
             total_affected_systems_count = await conn.fetchval(total_systems_query, *stats_params) or 0
 
             patched_systems_count = 0
@@ -306,6 +313,7 @@ async def get_distinct_filter_values(
         host=settings.hostname, port=settings.port, database=settings.name, user=settings.user, password=settings.password
     )
     try:
+        logger.debug("Executing distinct filter values query: %s \nPARAMS: %s", query, params)
         rows = await conn.fetch(query, *params)
         return [row[column] for row in rows]
     finally:

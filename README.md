@@ -17,6 +17,8 @@ Before running the server, you must configure the database connection using envi
 *   `DB_HOSTNAME`: The database server hostname (default: `localhost`).
 *   `DB_PORT`: The database server port (default: `5432`).
 *   `DB_NAME`: The database name (default: `reportdb`).
+*   `LOG_FILE`: Path to a file where logs will be written (e.g., `/var/log/mcp-uyuni-report.log`). If not set, logs are written to standard error.
+*   `LOG_LEVEL`: The logging level for the application (e.g., `DEBUG`, `INFO`, `WARNING`). Default: `INFO`.
 
 You can set these in your shell or in a `.env` file in the project root.
 
@@ -32,7 +34,7 @@ This is the main tool for retrieving statistics about errata. It can provide eit
 
 #### Example 2: Generating a Time-Series Graph
 
-> "Show me a weekly trend of security errata for my 'sles' systems from the beginning of the year until now. Plot the mean resolution time, patched systems, and created errata on a graph."
+> "Show me a weekly trend of security errata for my 'sles' systems from the beginning of the year until now. Plot the mean patch time, patched systems, and created errata on a graph."
 
 #### Filter Examples
 
