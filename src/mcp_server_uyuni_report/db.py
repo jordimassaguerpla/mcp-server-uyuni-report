@@ -45,8 +45,8 @@ class FilterableField(str, Enum):
     ADVISORY_TYPE = "advisory_type"
     HOSTNAME = "hostname"
 class ErrataStats(TypedDict):
-    mean_time_to_resolution: timedelta | None
-    mean_time_to_resolution_stddev: timedelta | None
+    mean_time_to_patch: timedelta | None
+    mean_time_to_patch_stddev: timedelta | None
     patched_systems_count: int
     created_errata_count: int
     total_affected_systems_count: int
@@ -54,7 +54,7 @@ class ErrataStats(TypedDict):
 
 class TimeseriesErrataStats(TypedDict):
     time_bucket: date
-    mean_time_to_resolution: timedelta | None
+    mean_time_to_patch: timedelta | None
     patched_systems_count: int
     created_errata_count: int
     total_affected_systems_count: int
@@ -180,7 +180,7 @@ async def get_errata_stats(
                               ELSE date_trunc($1, sa.completion_time)
                          END)::date as time_bucket,
                         count(DISTINCT sa.system_id) as patched_systems_count,
-                        avg(AGE(sa.completion_time, e.issue_date)) as mean_time_to_resolution
+                        avg(AGE(sa.completion_time, e.issue_date)) as mean_time_to_patch
                     FROM SystemAction sa
                     JOIN Errata e ON sa.event_data = e.advisory_name
                     {patched_system_joins}
@@ -192,7 +192,7 @@ async def get_errata_stats(
                     COALESCE(p.patched_systems_count, 0) as patched_systems_count,
                     COALESCE(c.created_errata_count, 0) as created_errata_count,
                     COALESCE(c.total_affected_systems_count, 0) as total_affected_systems_count,
-                    p.mean_time_to_resolution
+                    p.mean_time_to_patch
                 FROM time_series ts
                 LEFT JOIN created c ON ts.time_bucket = c.time_bucket
                 LEFT JOIN patched p ON ts.time_bucket = p.time_bucket
@@ -254,17 +254,17 @@ async def get_errata_stats(
             total_affected_systems_count = await conn.fetchval(total_systems_query, *stats_params) or 0
 
             patched_systems_count = 0
-            mean_time_to_resolution = None
-            mean_time_to_resolution_stddev = None
+            mean_time_to_patch = None
+            mean_time_to_patch_stddev = None
             if resolution_row and resolution_row["mean"] is not None:
-                mean_time_to_resolution = resolution_row["mean"]
+                mean_time_to_patch = resolution_row["mean"]
                 if resolution_row["stddev"] is not None:
-                    mean_time_to_resolution_stddev = timedelta(seconds=float(resolution_row["stddev"]))
+                    mean_time_to_patch_stddev = timedelta(seconds=float(resolution_row["stddev"]))
                 patched_systems_count = resolution_row["patched_systems_count"]
 
             return ErrataStats(
-                mean_time_to_resolution=mean_time_to_resolution,
-                mean_time_to_resolution_stddev=mean_time_to_resolution_stddev,
+                mean_time_to_patch=mean_time_to_patch,
+                mean_time_to_patch_stddev=mean_time_to_patch_stddev,
                 patched_systems_count=patched_systems_count,
                 created_errata_count=created_errata_count,
                 total_affected_systems_count=total_affected_systems_count,
