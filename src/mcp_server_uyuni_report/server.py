@@ -23,7 +23,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.dates import DateFormatter
 from mcp.server.fastmcp import FastMCP, Context
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from typing import Union
 from pydantic import BaseModel
 from . import db
@@ -78,8 +78,8 @@ class TimeseriesResponse(BaseModel):
 @mcp.tool()
 async def get_errata_stats(
     ctx: Context,
-    start_date: date | None = None,
-    end_date: date | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     advisory_type: str | None = None,
     advisory_name: str | None = None,
     cve: str | None = None,
@@ -88,7 +88,7 @@ async def get_errata_stats(
     os_family: str | None = None,
     organization: str | None = None,
     system_group_name: str | None = None,
-    granularity: db.Granularity | None = None,
+    granularity: str | None = None,
 ) -> Union[ErrataStatsResponse, TimeseriesResponse]:
     """
     Calculates statistics about errata. Can return aggregate data or a time series.
@@ -121,12 +121,33 @@ async def get_errata_stats(
     - system_group_name: Filter by a specific system group name.
     - granularity: If set, returns a time series. Can be 'day', 'week', 'month', 'half-year', or 'year'. Requires start_date and end_date.
     """
-    if granularity and (start_date is None or end_date is None):
-        raise ValueError("start_date and end_date are required when using granularity.")
+    parsed_start_date: date | None = None
+    if start_date:
+        try:
+            parsed_start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"Invalid start_date format: '{start_date}'. Please use YYYY-MM-DD.")
+
+    parsed_end_date: date | None = None
+    if end_date:
+        try:
+            parsed_end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError(f"Invalid end_date format: '{end_date}'. Please use YYYY-MM-DD.")
+
+    parsed_granularity: db.Granularity | None = None
+    if granularity:
+        if not parsed_start_date or not parsed_end_date:
+            raise ValueError("start_date and end_date are required when using granularity.")
+        try:
+            parsed_granularity = db.Granularity(granularity)
+        except ValueError:
+            valid_options = ", ".join(g.value for g in db.Granularity)
+            raise ValueError(f"Invalid granularity '{granularity}'. Valid options are: {valid_options}")
 
     stats_data = await db.get_errata_stats(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=parsed_start_date,
+        end_date=parsed_end_date,
         advisory_type=advisory_type,
         advisory_name=advisory_name,
         cve=cve,
@@ -135,7 +156,7 @@ async def get_errata_stats(
         os_family=os_family,
         organization=organization,
         system_group_name=system_group_name,
-        granularity=granularity,
+        granularity=parsed_granularity,
     )
 
     if isinstance(stats_data, list):
@@ -181,7 +202,7 @@ async def get_errata_stats(
 @mcp.tool()
 async def get_filter_values(
     ctx: Context,
-    field: db.FilterableField,
+    field: str,
     search_term: str | None = None,
     limit: int = 100,
 ) -> list[str]:
@@ -196,16 +217,22 @@ async def get_filter_values(
     - search_term: An optional term to search for within the values (case-insensitive, partial matching).
     - limit: The maximum number of values to return (default: 100).
     """
+    try:
+        parsed_field = db.FilterableField(field)
+    except ValueError:
+        valid_options = ", ".join(f.value for f in db.FilterableField)
+        raise ValueError(f"Invalid field '{field}'. Valid options are: {valid_options}")
+
     return await db.get_distinct_filter_values(
-        field=field, search_term=search_term, limit=limit
+        field=parsed_field, search_term=search_term, limit=limit
     )
 
 @mcp.tool()
 async def plot_errata_stats_timeseries(
     ctx: Context,
-    start_date: date,
-    end_date: date,
-    granularity: db.Granularity = db.Granularity.WEEK,
+    start_date: str,
+    end_date: str,
+    granularity: str = "week",
     advisory_type: str | None = None,
     advisory_name: str | None = None,
     cve: str | None = None,
@@ -234,9 +261,24 @@ async def plot_errata_stats_timeseries(
     - output_filename: If provided, saves the plot to this filename (e.g., 'my_report.png').
     - Other filters are the same as the get_errata_stats tool.
     """
+    try:
+        parsed_start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError(f"Invalid start_date format: '{start_date}'. Please use YYYY-MM-DD.")
+
+    try:
+        parsed_end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError(f"Invalid end_date format: '{end_date}'. Please use YYYY-MM-DD.")
+
+    try:
+        parsed_granularity = db.Granularity(granularity)
+    except ValueError:
+        valid_options = ", ".join(g.value for g in db.Granularity)
+        raise ValueError(f"Invalid granularity '{granularity}'. Valid options are: {valid_options}")
     stats_data = await db.get_errata_stats(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=parsed_start_date,
+        end_date=parsed_end_date,
         advisory_type=advisory_type,
         advisory_name=advisory_name,
         cve=cve,
@@ -245,7 +287,7 @@ async def plot_errata_stats_timeseries(
         os_family=os_family,
         organization=organization,
         system_group_name=system_group_name,
-        granularity=granularity,
+        granularity=parsed_granularity,
     )
 
     fig, ax = plt.subplots(figsize=(14, 8))
@@ -316,11 +358,15 @@ def main_cli():
             # If file logging fails, print an error to stderr and continue with console logging.
             print(f"ERROR: Could not open log file '{log_file}' for writing: {e}", file=sys.stderr)
             handlers = [logging.StreamHandler()]
-
+    
+    root_logger = logging.getLogger()
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=handlers,
+        force=True,  # This will remove and re-add handlers, overriding any pre-existing config.
     )
     logging.info("Starting mcp-server-uyuni-report...")
+    logging.info(f"Log level set to {log_level}")
+    root_logger.info("Effective handlers: %s", handlers)
     mcp.run(transport="stdio")
