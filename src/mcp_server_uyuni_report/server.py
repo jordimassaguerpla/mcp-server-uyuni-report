@@ -312,8 +312,10 @@ async def plot_errata_stats_timeseries(
         ax.plot(time_buckets, [s / max_patched for s in patched_systems], label=f'Patched Systems (max: {int(max_patched)})', marker='s', linestyle='-')
         ax.plot(time_buckets, [s / max_created for s in created_errata], label=f'Created Errata (max: {int(max_created)})', marker='^', linestyle='-')
         ax.plot(time_buckets, [s / max_total for s in total_affected], label=f'Total Affected Systems (max: {int(max_total)})', marker='x', linestyle='--')
-
-        ax.set_title(f'Errata Statistics Trend ({start_date} to {end_date})', fontsize=16)
+        if output_filename:
+            ax.set_title(f'Err stats {output_filename} ({start_date} to {end_date}', fontsize=16)
+        else:
+            ax.set_title(f'Errata Statistics Trend ({start_date} to {end_date})', fontsize=16)
         ax.set_xlabel('Time', fontsize=12)
         ax.set_ylabel('Normalized Value (0 to 1)', fontsize=12)
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
