@@ -1,0 +1,113 @@
+[
+  {
+    "id": "TC-ERRATA-001",
+    "prompt": "What are the overall errata statistics?",
+    "expected_output": "Returns aggregate statistics. Key values should include: mean_patch_time of '5 days, 3:30:00', a standard deviation of approximately '2 days, 23:46:27', patched_systems_count of 4, created_errata_count of 7, total_affected_systems_count of 6, and a severity_breakdown of {'critical': 2, 'important': 2, 'moderate': 1, 'low': 2}."
+  },
+  {
+    "id": "TC-ERRATA-002",
+    "prompt": "Show me errata statistics for security advisories issued between 2024-01-01 and 2024-03-31.",
+    "expected_output": "Returns aggregate statistics for security errata from 2024-01-01 to 2024-03-31. Key values should include: mean_patch_time of '5 days, 5:45:00', a standard deviation of approximately '3 days, 19:32:11', patched_systems_count of 4, created_errata_count of 3, total_affected_systems_count of 5, and a severity_breakdown of {'critical': 2, 'important': 1}."
+  },
+  {
+    "id": "TC-ERRATA-003",
+    "prompt": "Provide a weekly trend of errata statistics from 2024-01-01 to 2024-03-31.",
+    "expected_output": "Returns a time series with 'week' granularity. The response should contain a list of approximately 13 data points (one for each week in the range). The data should reflect the creation and patching of errata 201, 202, 203, and 204 within their respective weeks."
+  },
+  {
+    "id": "TC-ERRATA-004",
+    "prompt": "Give me a monthly trend of bugfix errata for systems with hostname 'my-server-01' from 2023-01-01 to 2023-12-31.",
+    "expected_output": "Returns a time series with 12 data points (one for each month of 2023). The data point for the month of June 2023 should reflect the creation and patching of errata 'SUSE-BF-2023:0615-1' for 'my-server-01'. All other data points should contain zero values for the statistics."
+  },
+  {
+    "id": "TC-ERRATA-005",
+    "prompt": "What are the errata statistics for the organization 'SUSE'?",
+    "expected_output": "Returns aggregate statistics for the 'SUSE' organization. Key values should include: mean_patch_time of '6 days, 2:40:00', a standard deviation of approximately '4 days, 3:42:47', patched_systems_count of 2, created_errata_count of 4, total_affected_systems_count of 2, and a severity_breakdown of {'moderate': 1, 'low': 1, 'critical': 2}."
+  },
+  {
+    "id": "TC-ERRATA-006",
+    "prompt": "Show me a weekly trend of errata.",
+    "expected_output": "Raises a ValueError because 'start_date' and 'end_date' are required when using 'granularity'."
+  },
+  {
+    "id": "TC-ERRATA-007",
+    "prompt": "What are the errata statistics from 'yesterday' to 'today'?",
+    "expected_output": "Raises a ValueError due to invalid date format. Dates must be in YYYY-MM-DD format."
+  },
+  {
+    "id": "TC-ERRATA-008",
+    "prompt": "What are the errata statistics for CVE-2024-1234?",
+    "expected_output": "Returns aggregate statistics for errata related to 'CVE-2024-1234'. Key values should include: mean_patch_time of '2 days, 16:00:00', patched_systems_count of 1, created_errata_count of 1, total_affected_systems_count of 2, and a severity_breakdown of {'important': 1}. Standard deviation should be not applicable."
+  },
+  {
+    "id": "TC-ERRATA-009",
+    "prompt": "Get errata stats for the 'sles' OS family.",
+    "expected_output": "Returns aggregate statistics for the 'sles' OS family. Key values should include: mean_patch_time of '5 days, 20:15:00', a standard deviation of approximately '3 days, 10:09:50', patched_systems_count of 3, created_errata_count of 5, total_affected_systems_count of 4, and a severity_breakdown of {'moderate': 1, 'low': 2, 'critical': 2}."
+  },
+  {
+    "id": "TC-ERRATA-010",
+    "prompt": "Show me the statistics for the 'production-servers' system group.",
+    "expected_output": "Returns aggregate statistics for the 'production-servers' system group. Key values should include: mean_patch_time of '5 days, 9:00:00', patched_systems_count of 1, created_errata_count of 1, total_affected_systems_count of 1, and a severity_breakdown of {'critical': 1}. Standard deviation should be not applicable."
+  },
+  {
+    "id": "TC-ERRATA-011",
+    "prompt": "What are the statistics for the advisory 'SUSE-SU-2024:1234-1'?",
+    "expected_output": "Returns aggregate statistics for advisory 'SUSE-SU-2024:1234-1'. Key values should include: mean_patch_time of '3 days, 20:30:00', a standard deviation of approximately '2 days, 3:37:07', patched_systems_count of 2, created_errata_count of 1, total_affected_systems_count of 3, and a severity_breakdown of {'critical': 1}."
+  },
+  {
+    "id": "TC-FILTERS-001",
+    "prompt": "What are the possible severity levels for errata?",
+    "expected_output": "Returns a list of distinct severity values, which should be ['critical', 'important', 'low', 'moderate']."
+  },
+  {
+    "id": "TC-FILTERS-002",
+    "prompt": "List organizations that contain 'test' in their name.",
+    "expected_output": "Returns a list containing the single organization name: ['Test Org']."
+  },
+  {
+    "id": "TC-FILTERS-003",
+    "prompt": "What are the values for the 'invalid_field' filter?",
+    "expected_output": "Raises a ValueError because 'invalid_field' is not a valid filterable field. The error message should list the valid options: 'organization', 'system_group_name', 'os_family', 'severity', 'advisory_type', 'hostname'."
+  },
+  {
+    "id": "TC-FILTERS-004",
+    "prompt": "What are the available advisory types?",
+    "expected_output": "Returns a list of distinct advisory types, which should be ['bugfix', 'enhancement', 'security']."
+  },
+  {
+    "id": "TC-FILTERS-005",
+    "prompt": "List advisory names containing 'SUSE-2024'.",
+    "expected_output": "Raises a ValueError because 'advisory_name' is not a valid field for the get_filter_values tool. The error message should list the valid options."
+  },
+  {
+    "id": "TC-FILTERS-006",
+    "prompt": "Find CVEs related to 'CVE-2024'.",
+    "expected_output": "Raises a ValueError because 'cve' is not a valid field for the get_filter_values tool. The error message should list the valid options."
+  },
+  {
+    "id": "TC-FILTERS-007",
+    "prompt": "Show me all hostnames for systems.",
+    "expected_output": "Returns a list of all 6 distinct hostnames, which should be ['my-server-01', 'prod-db-01', 'rhel-generic-01', 'sles-generic-01', 'test-host-1', 'web-server-rhel-01']."
+  },
+  {
+    "id": "TC-FILTERS-008",
+    "prompt": "What operating system families are present?",
+    "expected_output": "Returns a list of distinct OS families, which should be ['rhel', 'sles']."
+  },
+  {
+    "id": "TC-FILTERS-009",
+    "prompt": "List all system group names.",
+    "expected_output": "Returns a list of all 5 distinct system group names, which should be ['File Servers', 'PCI-Compliance', 'Test Group', 'Web Servers', 'production-servers']."
+  },
+  {
+    "id": "TC-PLOT-001",
+    "prompt": "Plot the weekly trend of errata statistics from 2024-01-01 to 2024-03-31.",
+    "expected_output": "Generates a non-empty, base64-encoded PNG image string representing the weekly errata statistics trend plot for the specified date range."
+  },
+  {
+    "id": "TC-PLOT-002",
+    "prompt": "Plot the monthly trend of security errata for 2023 and save it as '2023_security_errata_trend.png'.",
+    "expected_output": "Generates a PNG image and saves it to the 'plots' directory. The tool should return a success message containing the absolute path to the saved file, e.g., 'Plot saved successfully to /path/to/project/plots/2023_security_errata_trend.png'."
+  }
+]
+
