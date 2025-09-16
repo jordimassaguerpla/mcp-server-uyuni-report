@@ -32,10 +32,6 @@ from . import db
 PLOTS_DIR = os.path.abspath("./plots")
 
 mcp = FastMCP("mcp-server-uyuni-report")
-@mcp.tool()
-async def add(a: int, b: int, ctx: Context) -> int:
-    """Add two numbers"""
-    return a + b
 
 class ErrataStatsResponse(BaseModel):
     """Statistics about errata."""
