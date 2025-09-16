@@ -109,5 +109,5 @@ Then, you can start the postgresql server:
 ```
 And load the data
 ```
-./insert_test_data.sh
+./insert_test_data.sh test_data.sql
 ```
